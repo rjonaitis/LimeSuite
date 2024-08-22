@@ -389,6 +389,72 @@ static int programFirmware(const std::string &argStr)
     return (status==0)?EXIT_SUCCESS:EXIT_FAILURE;
 }
 
+#include "ConnectionFT601.h"
+static bool TestFTDI()
+{
+    ConnectionFT601Entry entry;
+    auto handles = entry.enumerate(ConnectionHandle());
+
+    if (handles.empty())
+        return false;
+
+    IConnection* ptr = entry.make(handles.front());
+    if (!ptr)
+        return false;
+
+    ConnectionFT601* ftdi = dynamic_cast<ConnectionFT601*>(ptr);
+    if (!ftdi)
+        return false;
+
+    if (!ftdi->IsOpen())
+        return false;
+
+    const uint8_t packet[] = {
+    0x55, // command FPGA SPI write
+    0x00, // status
+    0x01, // register count
+    0x00, 0x00, 0x00, 0x00, 0x00, // reserved
+    0x00, 0x0C, // reg addr
+    0x00, 0x0A, // reg value.
+    // rest is zeroes
+    };
+
+    uint8_t outBuffer[64];
+    memset(outBuffer, 0, sizeof(outBuffer));
+    memcpy(outBuffer, packet, sizeof(packet));
+
+    const int written = ftdi->Write(outBuffer, sizeof(outBuffer), 1000);
+    if (written != sizeof(outBuffer))
+        return false;
+
+    uint8_t inBuffer[64];
+    memset(inBuffer, 0, sizeof(inBuffer));
+
+    const int received = ftdi->Read(inBuffer, sizeof(inBuffer), 1000);
+    if (received != sizeof(inBuffer))
+        return false;
+
+    const uint8_t expectedResponse[] =
+    {
+        0x55, // command FPGA SPI write
+        0x01, // status success
+        0x01, // register count
+    };
+
+    bool responseGood = true;
+    for (int i=0; i<sizeof(expectedResponse); ++i)
+    {
+        if (inBuffer[i] != expectedResponse[i])
+        {
+            responseGood = false;
+            break;
+        }
+    }
+
+    delete ftdi;
+    return responseGood;
+}
+
 /***********************************************************************
  * main entry point
  **********************************************************************/
@@ -416,6 +482,7 @@ int main(int argc, char *argv[])
         {"refclk", optional_argument, 0, 'E'},
         {"fref",    optional_argument, 0, 'R'},
         {"fvco",    optional_argument, 0, 'V'},
+        {"FTDI",    optional_argument, 0, 1000},
         {0, 0, 0,  0}
     };
 
@@ -457,6 +524,18 @@ int main(int argc, char *argv[])
             break;
         case 'R': if (optarg != NULL) fref = std::stod(optarg); break;
         case 'V': if (optarg != NULL) fvco = std::stod(optarg); break;
+        case 1000:
+            if (TestFTDI())
+            {
+                printf("PASS\n");
+                return 0;
+            }
+            else
+            {
+                printf("FAIL\n");
+                return -1;
+            }
+            break;
         }
     }
 

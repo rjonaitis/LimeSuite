@@ -82,6 +82,7 @@ set(LIME_SUITE_SOURCES
 
 set(LIME_SUITE_INCLUDES
     ${CMAKE_CURRENT_SOURCE_DIR}
+    ConnectionFTDI
     API
     lime
     GFIR

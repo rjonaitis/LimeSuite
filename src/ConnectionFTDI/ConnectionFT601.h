@@ -24,9 +24,11 @@
 #include <chrono>
 #endif
 
+#include "LimeSuiteConfig.h"
+
 namespace lime{
 
-class ConnectionFT601 : public LMS64CProtocol
+class LIME_API ConnectionFT601 : public LMS64CProtocol
 {
 public:
     /** @brief Wrapper class for holding USB asynchronous transfers contexts
@@ -127,7 +129,7 @@ protected:
     uint64_t mSerial;
 };
 
-class ConnectionFT601Entry : public ConnectionRegistryEntry
+class LIME_API ConnectionFT601Entry : public ConnectionRegistryEntry
 {
 public:
     ConnectionFT601Entry(void);
